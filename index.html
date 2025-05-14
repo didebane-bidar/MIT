@@ -1,0 +1,361 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>جستجوی کالا</title>
+<style>
+  body {
+    font-family: 'B Nazanin', sans-serif;
+    background-color: #121212;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  .search-box {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+  }
+  input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    font-size: 18px;
+    border: none;
+    border-radius: 10px;
+    background-color: #1e1e1e;
+    color: #fff;
+    outline: none;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    margin-top: 10px;
+  }
+  .suggestions {
+    position: absolute;
+    background-color: #1e1e1e;
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    border-radius: 10px;
+    margin-top: 5px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    z-index: 10;
+  }
+  .suggestions div {
+    padding: 10px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  .suggestions div:hover {
+    background-color: #333;
+  }
+  button {
+    margin: 10px 5px 0;
+    padding: 10px 20px;
+    background-color: #1976d2;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  button:hover {
+    background-color: #1565c0;
+  }
+  #result {
+    margin-top: 30px;
+    font-size: 22px;
+    color: #4caf50;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>راهنمای جستجوی کالا انبار شاپ ام آی تی </h1>
+
+<div class="search-box">
+  <input type="text" id="searchInput" placeholder="نام کالا را تایپ کنید...">
+  <div id="suggestions" class="suggestions"></div>
+</div>
+
+<button onclick="showResult()">مشاهده قفسه</button>
+
+<div id="result"></div>
+
+<div id="inventory-controls" style="margin-top: 20px; display:none;">
+  <button onclick="promptDecrease()">کاهش موجودی</button>
+  <button id="increaseBtn" onclick="promptPassword()">افزایش موجودی</button>
+</div>
+
+<script>
+const models = {
+  "MONITOR SAMSUNG S22D300GAM": { location: "R-B-01 R-D-01 R-D-04", quantity: 5 },
+  "MONITOR SAMSUNG U32J590UQM": { location: "R-B-02", quantity: 2 },
+  "MONITOR SAMSUNG S24DG302EM": { location: "R-B-03 T-B-01 S-B-01", quantity: 6 },
+  "MONITOR SAMSUNG S32CG552EM": { location: "Q-B-05 Q-D-01", quantity: 7 },
+  "MONITOR SAMSUNG S25BG402EM": { location: "Q-A-04", quantity: 100 },
+  "MONITOR SAMSUNG S27DG602SM": { location: "Q-B-04", quantity: 100 },
+  "MONITOR SAMSUNG S24C310EAM": { location: "P-B-01", quantity: 100 },
+  "MONITOR SAMSUNG S27CG552EM": { location: "P-A-02 Q-E-01", quantity: 100 },
+  "MONITOR SAMSUNG S34C650TAM": { location: "P-B-04", quantity: 100 },
+  "MONITOR SAMSUNG S32DG502EM": { location: "P-A-05 S-A-02", quantity: 100 },
+  "MONITOR SAMSUNG S22C310EAM": { location: "P-A-04", quantity: 100 },
+  "MONITOR SAMSUNG S27DG302EM": { location: "V-C-01 T-H-02 S-A-03", quantity: 100 },
+  "MONITOR SAMSUNG S24D300GAM": { location: "R-H-04", quantity: 100 },
+  "MONITOR SAMSUNG S27C310EAM": { location: "U-B-02 V-A-01", quantity: 100 },
+  "MONITOR SAMSUNG S32BG850NM": { location: "T-A-02", quantity: 100 },
+  "MONITOR SAMSUNG S34BG850SM": { location: "T-A-02", quantity: 100 },
+  "MONITOR SAMSUNG S27G320NM": { location: "T-B-04", quantity: 100 },
+  "MONITOR SAMSUNG S24D606EAM": { location: "T-B-04", quantity: 100 },
+  "MONITOR SAMSUNG S27D606EAM": { location: "S-B-05", quantity: 100 },
+  "MONITOR SAMSUNG S28BG702EM": { location: "S-A-04", quantity: 100 },
+  "MONITOR SAMSUNG S32DG802SM": { location: "S-B-02", quantity: 100 },
+  "MONITOR SAMSUNG S27BG402EM": { location: "V-B-01", quantity: 100 },
+  "MONITOR SAMSUNG S27BG650EM": { location: "U-A-04", quantity: 100 },
+  "MONITOR SAMSUNG S32BG650EM": { location: "U-B-03", quantity: 100 },
+  "MONITOR LG 27UP650-W": { location: "T-A-03", quantity: 100 },
+  "MONITOR LG 22MR410-B": { location: "S-A-01", quantity: 100 },
+  "MONITOR LG 27MR400-B": { location: "Q-B-03", quantity: 100 },
+  "MONITOR LG 24GS50F-B": { location: "P-B-03", quantity: 100 },
+  "MONITOR LG 34WQ75C": { location: "U-C-03", quantity: 100 },
+  "CREATIVE SPEAKER PEBBLE V2": { location: "O-A-06 O-A-10", quantity: 100 },
+  "KODAK USB FAST CHARGER 4_AA 2100MAH CAT 30424265": { location: "N-B-07", quantity: 100 },
+  "CREATIVE SPEAKER PEBBLE V3": { location: "O-B-06 O-B-10", quantity: 100 },
+  "LAPTOP ASUS BR1102CG SSD_256GB RAM 8GB": { location: "O-C-08  O-C-10", quantity: 100 },
+  "LAPTOP ASUS BR1102CG SSD_128GB RAM 8GB": { location: "O-D-06  O-D-10", quantity: 100 },
+  "HEADSET READRAGON H211 RGB": { location: "O-C-05 O-C-06", quantity: 100 },
+  "READRAGON KEYBOARD MOUSE  MOUSE PAD HEADSET K552_BB_2": { location: "O-C-04", quantity: 100 },
+  "READRAGON SOUNDBAR GS3": { location: "O-A-05", quantity: 100 },
+  "READRAGON SOUNDBAR STAGE SE MINI": { location: "O-A-03 O-A-04", quantity: 100 },
+  "KODAK SUPER HEAVY DUTY ZINC AAA×4  CAT 30953321": { location: "O-D-01 O-D-05", quantity: 100 },
+  "MONITOR ARM TM_54_C06_W": { location: "O-A-01  O-A-02", quantity: 100 },
+  "POWER SEASONIC PX_1000 PRIME": { location: "O-B-03", quantity: 100 },
+  "MSI MOTHERBOARD Z890 EDGE TI WIFI DDR5": { location: "N-C-10", quantity: 100 },
+  "MSI GEFORSE RTX 4070 SUPER 12G GAMING X SLIM": { location: "N-B-10", quantity: 100 },
+  "MSI MOTHERBOARD GAMING PLUS WIFI DDR5": { location: "N-B-10", quantity: 100 },
+  "EXASEND SSD 256 GB SATA": { location: "N-A-08-09-10", quantity: 100 },
+  "MSI MOTHERBOARD B650 GAMING PLUS WIFI DDR5": { location: "N-C-09", quantity: 100 },
+  "MSI MOTHERBOARD B760 M_P_DDR4": { location: "N-C-09", quantity: 100 },
+  "MSI MOTHERBOARD B880 M_A_WIFI": { location: "N-B-09", quantity: 100 },
+  "MSI MOTHERBOARD Z890 EDGE TI WIFI DDR5": { location: "N-B-09", quantity: 100 },
+  "MSI MOTHERBOARD X670 E TOMAHAWK WIFI DDR5": { location: "N-D-09", quantity: 100 },
+  "MSI GEFORSE RTX 4060 TI GAMING X SLIM 16G": { location: "N-D-08", quantity: 100 },
+  "MSI MOTHERBOARD Z890 CARBON WIFI DDR5": { location: "N-B-08", quantity: 100 },
+  "MSI MOTHERBOARD B860 GAMING PLUS DDR5": { location: "N-D-06", quantity: 100 },
+  "KODAK CABLE USB TO USB_C ANDROID CAT 30425965": { location: "N-C-06-07-08", quantity: 100 },
+  "MSI MOTHERBOARD B850 EDGE TI WIFI": { location: "N-D-07", quantity: 100 },
+  "KODAK USB FAST CHARGER 4_AA 2100MAH CAT 30424265": { location: "N-B-07", quantity: 100 },
+  "KODAK WIRED EARPHONES 210+USB_C CAT 30425743": { location: "N-B-07", quantity: 100 },
+  "MSI MOTHERBOARD Z890_S WIFI DDR5": { location: "N-A-07", quantity: 100 },
+  "MSI MOTHERBOARD H610M_S WIFI DDR4": { location: "N-B-05 06", quantity: 100 },
+  "MSI MOTHERBOARD Z890 GAMING PLUS WIFI": { location: "N-A-06", quantity: 100 },
+  "MSI MOTHERBOARD B850_P WIFI": { location: "N-A-06", quantity: 100 },
+  "MSI MOTHERBOARD X670E TOMAHAWK WIFI": { location: "N-A-05", quantity: 100 },
+  "MSI MOTHERBOARD B650M_P": { location: "N-D-05", quantity: 100 },
+  "KODAK CABLE USB TO LIGHTNING FOR IPHONE CAT 30425996": { location: "N-C-05", quantity: 100 },
+  "MSI MOTHERBOARD B760 M_A_WIFI DDR4": { location: "N-D-04", quantity: 100 },
+  "KODAK CABLE USB_C TO USB FOR ANDROID": { location: "N-C-04", quantity: 100 },
+  "LIGHT WAVE 2500W LW EXT 64U 2P": { location: "N-A-04", quantity: 100 },
+  "KODAK USB TO MICRO USB FOR ANDROID CAT 30425828": { location: "N-C-03", quantity: 100 },
+  "LIGHT WAVE 5 IN 1 WIRELESS LW WCH 301": { location: "N-A-03", quantity: 100 },
+  "LIGH WAVE 2500 WIRELESS LW EXT 44MW 2P": { location: "N-A-03", quantity: 100 },
+  "MSI MOTHERBOARD H610M_G DDR4": { location: "N-D-03", quantity: 100 },
+  "KODAK USB_C TO LITHNING FOR IPHONE CAT 30425989": { location: "N-C-02", quantity: 100 },
+  "MSI MOTHERBOARD B650M_E": { location: "N-D-02", quantity: 100 },
+  "MSI MOTHERBOARD A620M_E": { location: "N-D-01", quantity: 100 },
+  "MSI MOTHERBOARD B760M_P_DDR4": { location: "N-C-09", quantity: 100 },
+  "MSI MOTHERBOARD B880M_A WIFI DDR5": { location: "N-B-09", quantity: 100 },
+  "MSI MOTHERBOARD Z890 EDGE TI WIFI DDR5": { location: "N-B-09", quantity: 100 },
+  "MSI MOTHERBOARD X670 TOMAHAWK WIFI DDR5": { location: "N-D-09", quantity: 100 },
+  "MSI MOTHERBOARD Z890 CARBON WIFI D5": { location: "N-B-08", quantity: 100 },
+  "MSI MOTHERBOARD B860 GAMING PLUS DDR5": { location: "N-D-06", quantity: 100 },
+  "KODAK CABLE USB TO USB_C ANDROID CAT 30425965": { location: "N-C-06-07-08", quantity: 100 },
+  "MSI MOTHERBOARD B850 EDGE TI WIFI DDR5": { location: "N-D-07", quantity: 100 },
+  "KODAK NI_MH BATTORY USB FAST CHARGER  4_AA  2100 MAH CAT 30424265": { location: "N-B-07", quantity: 100 },
+  "KODAK WIRED EARPHONES 210+ USB _C CAT 30425743": { location: "N-B-07", quantity: 100 },
+  "MSI  MOTHERBOARD PRO Z890_S WIFI DDR5": { location: "N-A-07", quantity: 100 },
+  "MSI  MOTHERBOARD PRO H610M_S WIFI DDR4": { location: "N-B-05-06", quantity: 100 },
+  "MSI MOTHERBOARD Z890 GAMING PLUS WIFI DDR5": { location: "N-A-06", quantity: 100 },
+  "MSI MOTHERBOARD B850_P WIFI DDR5": { location: "N-A-06", quantity: 100 },
+  "MSI MOTHERBOARD X870E TOMAHAWK WIFI DDR5": { location: "N-A-05", quantity: 100 },
+  "MSI MOTHERBOARD B650M-P DDR5": { location: "N-D-05", quantity: 100 },
+  "KODAK CABLE USB TO LIGHTNING FOR IPHONE CAT 30425996": { location: "N-C-05", quantity: 100 },
+  "MSI MOTHERBOARD PRO B760M-A WIFI DDR4": { location: "N-D-04", quantity: 100 },
+  "KODAK CABLE USB-C TO USB-C FOR ANDROID CAT 30425972": { location: "N-C-04", quantity: 100 },
+  "LIGHT WAVE 2500W 6 POWRR SOKETS+4 AUTO ID LW-EXT-64U-2P": { location: "N-A-04", quantity: 100 },
+  "KODAK CABLE USB TI MICRO USB FOR ANDROID CAT 30425828": { location: "N-C-03", quantity: 100 },
+  "LIGHT WAVE 5 IN 1 WIRLESS CHARGER LW-WCH-301": { location: "N-A-03", quantity: 100 },
+  "LIGHT WAVE WIRELESS & SUPER FAST CHARGER LW-EXT-44MW-2P": { location: "N-A-03", quantity: 100 },
+  "MSI MOTHERBOATD PRO H610M-G DDR4": { location: "N-D-03", quantity: 100 },
+  "KODAK CABLE USB TO LIGHTNING FOR IPHONE CAT 30425989": { location: "N-C-02", quantity: 100 },
+  "MSI MOTHERBOARD PRO B650M-E DDR5": { location: "N-D-02", quantity: 100 },
+  "MSI MOTHERBOARD PRO A620M-E DDR5": { location: "N-D-01", quantity: 100 },
+  "KODAK CABLE 3 IN 1 FOR ANDROID & IPHONE CAT 30425835": { location: "N-C-01", quantity: 100 },
+  "KODAK LED HEAD LAMP 5 WATT": { location: "N-B-01-02-03", quantity: 100 },
+  "LIGHT WAVE 2500W 4 EU OUTLETS + 4 USB LW-EXT-44 U-2P": { location: "0-0-0", quantity: 100 },
+  "LIGHT WAVE 10 OUTLETS 5 USB-A & 1 USB-C LW-EXT-1064-2P": { location: "N-A-02", quantity: 100 },
+  "KODAK MAX SUPER ALKALINE 6V R44 28A CAT 30657670": { location: "N-C-01", quantity: 100 },
+  "EXASEND SSD 128GB SATA": { location: "M-D-08-09-10", quantity: 100 },
+  "MSI GEFORCE RTX 4060 VENTUS 2X BLACK 8G OC": { location: "M-D-08", quantity: 100 }, 
+  "MSI MOTHERBOARD B850 GAMING PLUS WIFI DDR5": { location: "M-D-07", quantity: 100 },
+  "KODAK LED BICYCLE LIGHT SET CAT 30414228": { location: "M-C-08", quantity: 100 },
+  "TWISTED MINDS LED STRIP MONITOR -TV RGB": { location: "M-D-06", quantity: 100 },
+  "WEBCAM USB-HD J5 CREATE JVCU100": { location: "M-D-06", quantity: 100 },
+  "MSI MOTHERBOARD B760 GAMING PLUS WIFI DDR5": { location: "M-D-05", quantity: 100 },
+  "RAPOO MOUSE & KEYBOARD 8200M + 7200M WHITE": { location: "M-D-05", quantity: 100 },
+  "RAPOO WEBCAM HD C200 BLACK": { location: "M-D-04", quantity: 100 },
+  "RAPOO MINI SPEAKER BLU A100 GRAY": { location: "M-D-04", quantity: 100 },
+  "TARGAS  MONITOR STAND UNIVERSAL PA235A": { location: "M-D-04", quantity: 100 },
+  "MSI MOTHERBOARD PRO B760-M-E DDR5": { location: "M-D-03", quantity: 100 },
+  "MSI MOTHERBOARD PRO B760-M-E DDR4": { location: "M-D-01", quantity: 100 },
+  "MSI GEFORCE RTX 4060 TI VENTUS 2X BLACK 8G OC": { location: "M-C-01", quantity: 100 },
+  "MSI GEFORCE RTX 3050 VENTUS 2X 6G OC": { location: "M-C-02", quantity: 100 },
+  "SSD SAMSUNG 870 EVO 1.TB SATA": { location: "M-C-03-04", quantity: 100 },
+  "LAPTOP MICROSOFT SURFACE 5  MATE BLACK 1951": { location: "M-C-05", quantity: 100 },
+  "MSI GEFORCE RTX 4070 SUPER 12G VENTUS 3X OC": { location: "M-C-05", quantity: 100 },
+  "HDD PORTABLE MARVEL OKOYE DRIVE  2.TB": { location: "M-C-06", quantity: 100 },
+  "MSI GEFORCE RTX 4060 GAMING X 8G": { location: "M-C-07", quantity: 100 },
+  "MSI MOTHERBOARD MAG Z790 TOMAHAWK MAX WIFI DDR5": { location: "M-C-09", quantity: 100 },
+  "MSI GRAPHICS CARD N730-4G D3V2 GT-730": { location: "M-C-09", quantity: 100 },
+  "MSI GEFORCE GT 1030 4GD4 LP OC": { location: "M-C-10", quantity: 100 },
+  "KODAK LED FLASH LIGHT CTIVE 10 CAT 30416376": { location: "M-B-09", quantity: 100 },
+  "KODAK LED FLASH LIGHT ULTRA 290 CAT 30418363": { location: "M-B-08", quantity: 100 },
+  "MIT GROUP MINI PC N4020": { location: "M-B-05-06-07", quantity: 100 },
+  "LOGITECH MOUSE M185-910-0022-52": { location: "M-B-04", quantity: 100 },
+  "LOGITECH MOUSE M185 -CN RED 910-002633": { location: "M-B-03", quantity: 100 },
+  "LOGITECH MOUSE M171 -910-004643": { location: "M-B-03", quantity: 100 },
+  "MSI MOTHERBOARD MAG B650 TOMAHAWK WIFI DDR5": { location: "M-B-02", quantity: 100 },
+  "MONITOR REDRAGON GM27X5QIPS": { location: "Q-B-02 Q-F-03", quantity: 100 },
+  "MONITOR REDRAGON GM24X5IPS": { location: "P-A-02 Q-G-04", quantity: 100 },
+  "MONITOR KOORUI 32E6QC": { location: "P-A-03", quantity: 100 },
+  "MONITOR LG 34WQ60C": { location: "P-A-04", quantity: 100 },
+  "MONITOR SAMSUNG S34C650TAM": { location: "P-B-04", quantity: 100 },
+  "MONITOR TWISTED MINDS TM27DQI": { location: "U-C-01", quantity: 100 },
+  "MONITOR REDRAGON GM27HIOQC": { location: "R-A-05 Q-G-02", quantity: 100 },
+  "MONITOR REDRAGON GM27X5IPS": { location: "Q-A-05 Q-F-03", quantity: 100 },
+  "CREATIVE SPEAKER E2900": { location: "R-A-04", quantity: 100 },
+  "MONITOR TWISTED MINDS TM24FHD100IPS": { location: "S-C-01", quantity: 100 },
+  "MONITOR KOORUI GN06": { location: "P-D-03", quantity: 100 },
+  "MONITOR LG 27GS75Q": { location: "U-A-03", quantity: 100 },
+  "MONITOR LG 34GP63A": { location: "U-A-02", quantity: 100 },
+  "MONITOR AOC U34G3XM": { location: "T-A-01", quantity: 100 },
+  "MONITOR AOC CQ32G3SE": { location: "S-A-05", quantity: 100 },
+  "MONITOR REDRAGON GM32H2Q": { location: "S-B-03 Q-F-01", quantity: 100 },
+  "MONITOR AOC G2 SERIES": { location: "S-A-03", quantity: 100 },
+  "MONITOR KOORUI 27EQ3K": { location: "U-A-05", quantity: 100 },
+  "MONITOR TWISTED MINDS TM28EUI": { location: "V-A-03", quantity: 100 },
+  "WATER DISPENSER LW-WD-CBB": { location: "V-A-02", quantity: 100 },
+  "WATER DISPENSER LW-WD-F11": { location: "V-A-02", quantity: 100 },
+  "WATER DISPENSER LW-WD-T505": { location: "V-A-02", quantity: 100 },
+  "LIGHT WAVE LW-SF-1655R": { location: "V-A-02", quantity: 100 },
+  "LIGHT WAVE LW-SF-1666R WHITE": { location: "V-A-02", quantity: 100 },
+  "ANTEC CASE NX292 BLACK": { location: "V-A-01", quantity: 100 },
+  "AL SMART AIR FRYER LW-ARF-SW10LAI": { location: "U-A-04", quantity: 100 },
+  "LIGHT WAVE LW-ARF-SW07L101": { location: "U-B-04", quantity: 100 },
+  "LIGHT WAVE LW-SD-1666R": { location: "U-B-04", quantity: 100 },
+  "LIGHT WAVE LW-ARF-SW10LAI AL SMART AIR FRYER": { location: "U-B-05", quantity: 100 },
+  "LIGHT WAVE LW-MW-K20": { location: "U-B-04", quantity: 100 },
+  "MSI GRAPHICS CARD GT710 2GD3H 4HDMI": { location: "M-B-01", quantity: 100 },
+  "MSI MOTHERBOARD PRO H610M-G WIFI DDR4": { location: "M-A-01-02", quantity: 100 },
+  "KODAK MAX LITHIUM 123LAX1 3V CAT 30956223": { location: "M-A-03-04", quantity: 100 },
+  "MIT GROUP MINI PC I3-10110U": { location: "M-A-05-06-07-08-09-10", quantity: 100 },
+  "MSI MOTHERBOARD MAG B860 TOMAHAWK WIFI DDR5": { location: "N-B-08", quantity: 100 },
+  "APACER SSD 512.GB SATA AS350X": { location: "L-D-01", quantity: 100 },
+  "OSCOO SSD OS001 256.GB SATA BLUE": { location: "L-D-03-04", quantity: 100 },
+  "LAPTOP ASUS F515M SSD=256.GB RAM=4.GB": { location: "L-D-05-06-07-08-09-10", quantity: 100 },
+  "EXASEND SSD PORTABLE 2.TB": { location: "L-C-01", quantity: 100 },
+  "THERMAL GRIZZLY CPU CONTACT FRAME INTEL 1700 LT": { location: "L-C-01", quantity: 100 },
+  "EXASEND SSD PORTABLE 1.TB": { location: "L-C-01", quantity: 100 },
+  "OSCOO MEMORY 16GB 5600 MHZ LAPTOP DDR5": { location: "L-C-02", quantity: 100 },
+  "OSCOO MEMORY 16GB 5200 MHZ LAPTOP DDR5": { location: "L-C-02", quantity: 100 },
+  "THERMAL GRIZZLY THERMAL PAD TG-KS-50-50": { location: "L-C-02", quantity: 100 },
+  "THERMAL GRIZZLY THERMAL PAD TG-KS-38-38": { location: "L-C-03", quantity: 100 },
+  "THERMAL GRIZZLY 8 MINUS PAD TG-MP8-120-20-1.5MM-1R": { location: "L-C-03", quantity: 100 },
+  "THERMAL GRIZZLY 8 MINUS PAD TG-MP8-30-30-0.5MM-1R": { location: "L-C-03", quantity: 100 },
+  "THERMAL GRIZZLY 8 THERMAL PAD TG-KS-25-25MM": { location: "L-C-04", quantity: 100 },
+  "THERMAL GRIZZLY 8 THERMAL PAD TG-MP8-100-100MM- 10-1R": { location: "L-C-04", quantity: 100 },
+  "THERMAL GRIZZLY 8 THERMAL PAD TG-KS-24-12": { location: "L-C-04", quantity: 100 },
+  "THERMAL GRIZZLY 8 THERMAL PAD TG-KS-33-33MM": { location: "L-C-05", quantity: 100 },
+  "THERMAL GRIZZLY 8 THERMAL PAD TG-MP8-120-20-20-1R": { location: "L-C-05", quantity: 100 },
+  "LAPTOP ASUS E410M-HDD=512.GB RAM=4.GB DDR4": { location: "L-C-04", quantity: 100 }
+}
+
+const PASSWORD = "1234"; // رمز عبور برای افزایش موجودی
+const searchInput = document.getElementById('searchInput');
+const suggestions = document.getElementById('suggestions');
+let currentModel = null;
+
+searchInput.addEventListener('input', () => {
+  const input = searchInput.value.toLowerCase();
+  suggestions.innerHTML = '';
+
+  if (input.length === 0) return;
+
+  Object.keys(models).forEach(model => {
+    if (model.toLowerCase().includes(input)) {
+      const div = document.createElement('div');
+      div.textContent = model;
+      div.onclick = () => {
+        searchInput.value = model;
+        suggestions.innerHTML = '';
+      };
+      suggestions.appendChild(div);
+    }
+  });
+});
+
+function showResult() {
+  const value = searchInput.value;
+  const product = models[value];
+  if (product) {
+    currentModel = value;
+    document.getElementById('result').textContent = `قفسه: ${product.location} | موجودی: ${product.quantity}`;
+    document.getElementById('inventory-controls').style.display = 'block';
+  } else {
+    document.getElementById('result').textContent = 'مدل وارد شده موجود نیست';
+    document.getElementById('inventory-controls').style.display = 'none';
+    currentModel = null;
+  }
+}
+
+function adjustQuantity(amount) {
+  if (!currentModel) return;
+  const product = models[currentModel];
+  product.quantity += amount;
+  if (product.quantity < 0) product.quantity = 0;
+  showResult();
+}
+
+function promptPassword() {
+  const input = prompt("رمز عبور را وارد کنید:");
+  if (input === PASSWORD) {
+    const quantityStr = prompt("چند عدد به موجودی اضافه شود؟");
+    const quantity = parseInt(quantityStr);
+    if (!isNaN(quantity) && quantity > 0) {
+      adjustQuantity(quantity);
+    } else {
+      alert("عدد وارد شده نامعتبر است.");
+    }
+  } else {
+    alert("رمز نادرست است.");
+  }
+}
+
+function promptDecrease() {
+  const quantityStr = prompt("چند عدد از موجودی کم شود؟");
+  const quantity = parseInt(quantityStr);
+  if (!isNaN(quantity) && quantity > 0) {
+    adjustQuantity(-quantity);
+  } else {
+    alert("عدد وارد شده نامعتبر است.");
+  }
+}
+</script>
+
+</body>
+</html>
